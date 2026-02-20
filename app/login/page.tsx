@@ -1,6 +1,7 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { authClient } from "@/lib/auth/auth-client";
 import {
   Field,
   FieldContent,
@@ -16,23 +17,41 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+type FormData = {
+  email: string;
+  password: string;
+};
+
 export default function Login() {
-  const { register, handleSubmit, control } = useForm({
+  const { handleSubmit, control, setError } = useForm<FormData>({
     defaultValues: {
       email: "",
+      password: "",
     },
   });
+
+  const onSuccessfulSubmit: SubmitHandler<FormData> = async (formData) => {
+    const { data, error } = await authClient.signIn.email({
+      email: formData.email,
+      password: formData.password,
+      callbackURL: "/",
+    });
+
+    console.log("data", data);
+    console.log("error", error);
+
+    if (error) {
+      setError("root", {
+        message: error.message ?? "Something went wrong. Please try again.",
+      });
+    }
+  };
 
   return (
     <main>
       <div>Login page</div>
 
-      <form
-        id="login-form"
-        onSubmit={handleSubmit((data) => {
-          console.log(data);
-        })}
-      >
+      <form id="login-form" onSubmit={handleSubmit(onSuccessfulSubmit)}>
         <FieldSet>
           <FieldLegend>Login</FieldLegend>
           <FieldDescription>Description</FieldDescription>
@@ -53,6 +72,28 @@ export default function Login() {
                   <Input
                     {...field}
                     id="email"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="password"
+              control={control}
+              rules={{
+                required: "Password is required",
+              }}
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <Input
+                    {...field}
+                    id="password"
+                    type="password"
                     aria-invalid={fieldState.invalid}
                   />
                   {fieldState.invalid && (
